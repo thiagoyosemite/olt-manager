@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Configurações Wi-Fi{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Configurações Wi-Fi</h1>
+    <p class="lead">Dispositivo: {{ device_id }}</p>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">Configurações Wi-Fi 2.4GHz</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('tr069.wifi_settings', device_id=device_id) }}">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="wifi_enabled" name="wifi_enabled" 
+                                {% if wifi_settings and wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.Enable', {}).get('value') == '1' %}checked{% endif %}>
+                            <label class="form-check-label" for="wifi_enabled">Habilitar Wi-Fi 2.4GHz</label>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="ssid" class="form-label">Nome da Rede (SSID)</label>
+                            <input type="text" class="form-control" id="ssid" name="ssid" 
+                                value="{{ wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID', {}).get('value', '') }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="channel" class="form-label">Canal</label>
+                            <select class="form-select" id="channel" name="channel">
+                                <option value="0" {% if wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.Channel', {}).get('value') == '0' %}selected{% endif %}>Auto</option>
+                                {% for i in range(1, 14) %}
+                                <option value="{{ i }}" {% if wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.Channel', {}).get('value') == i|string %}selected{% endif %}>{{ i }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="security_mode" class="form-label">Modo de Segurança</label>
+                            <select class="form-select" id="security_mode" name="security_mode">
+                                <option value="None" {% if wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType', {}).get('value') == 'None' %}selected{% endif %}>Nenhum</option>
+                                <option value="Basic" {% if wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType', {}).get('value') == 'Basic' %}selected{% endif %}>WEP</option>
+                                <option value="WPA" {% if wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType', {}).get('value') == 'WPA' %}selected{% endif %}>WPA</option>
+                                <option value="11i" {% if wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType', {}).get('value') == '11i' %}selected{% endif %}>WPA2</option>
+                                <option value="WPAand11i" {% if wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.BeaconType', {}).get('value') == 'WPAand11i' %}selected{% endif %}>WPA/WPA2</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Senha</label>
+                            <input type="password" class="form-control" id="password" name="password" 
+                                value="{{ wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey', {}).get('value', '') }}">
+                            <div class="form-text">Deixe em branco para manter a senha atual.</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="card-header bg-primary text-white mb-3">
+                    <h5 class="card-title mb-0">Configurações Wi-Fi 5GHz</h5>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="wifi_5g_enabled" name="wifi_5g_enabled" 
+                                {% if wifi_settings and wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.Enable', {}).get('value') == '1' %}checked{% endif %}>
+                            <label class="form-check-label" for="wifi_5g_enabled">Habilitar Wi-Fi 5GHz</label>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="ssid_5g" class="form-label">Nome da Rede 5GHz (SSID)</label>
+                            <input type="text" class="form-control" id="ssid_5g" name="ssid_5g" 
+                                value="{{ wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.SSID', {}).get('value', '') }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="channel_5g" class="form-label">Canal 5GHz</label>
+                            <select class="form-select" id="channel_5g" name="channel_5g">
+                                <option value="0" {% if wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.Channel', {}).get('value') == '0' %}selected{% endif %}>Auto</option>
+                                {% for i in [36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144, 149, 153, 157, 161, 165] %}
+                                <option value="{{ i }}" {% if wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.Channel', {}).get('value') == i|string %}selected{% endif %}>{{ i }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="security_mode_5g" class="form-label">Modo de Segurança 5GHz</label>
+                            <select class="form-select" id="security_mode_5g" name="security_mode_5g">
+                                <option value="None" {% if wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.BeaconType', {}).get('value') == 'None' %}selected{% endif %}>Nenhum</option>
+                                <option value="Basic" {% if wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.BeaconType', {}).get('value') == 'Basic' %}selected{% endif %}>WEP</option>
+                                <option value="WPA" {% if wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.BeaconType', {}).get('value') == 'WPA' %}selected{% endif %}>WPA</option>
+                                <option value="11i" {% if wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.BeaconType', {}).get('value') == '11i' %}selected{% endif %}>WPA2</option>
+                                <option value="WPAand11i" {% if wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.BeaconType', {}).get('value') == 'WPAand11i' %}selected{% endif %}>WPA/WPA2</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password_5g" class="form-label">Senha 5GHz</label>
+                            <input type="password" class="form-control" id="password_5g" name="password_5g" 
+                                value="{{ wifi_settings.get('InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.PreSharedKey.1.PreSharedKey', {}).get('value', '') }}">
+                            <div class="form-text">Deixe em branco para manter a senha atual.</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('tr069.device_details', device_id=device_id) }}" class="btn btn-secondary me-md-2">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Salvar Configurações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

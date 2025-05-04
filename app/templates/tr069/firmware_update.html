@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Atualização de Firmware{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Atualização de Firmware</h1>
+    <p class="lead">Dispositivo: {{ device_id }}</p>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">Atualizar Firmware do Dispositivo</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle-fill"></i> Atenção: A atualização de firmware pode levar vários minutos e o dispositivo ficará indisponível durante o processo. Não desligue o dispositivo durante a atualização.
+            </div>
+            
+            <form method="post" action="{{ url_for('tr069.firmware_update', device_id=device_id) }}">
+                <div class="mb-3">
+                    <label for="firmware_url" class="form-label">URL do Arquivo de Firmware</label>
+                    <input type="url" class="form-control" id="firmware_url" name="firmware_url" required
+                           placeholder="http://servidor.exemplo.com/firmware.bin">
+                    <div class="form-text">URL completa do arquivo de firmware a ser baixado pelo dispositivo.</div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="username" class="form-label">Nome de Usuário (opcional)</label>
+                        <input type="text" class="form-control" id="username" name="username"
+                               placeholder="Usuário para autenticação no servidor">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="password" class="form-label">Senha (opcional)</label>
+                        <input type="password" class="form-control" id="password" name="password"
+                               placeholder="Senha para autenticação no servidor">
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="file_size" class="form-label">Tamanho do Arquivo (bytes, opcional)</label>
+                        <input type="number" class="form-control" id="file_size" name="file_size"
+                               placeholder="Tamanho em bytes">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="filename" class="form-label">Nome do Arquivo (opcional)</label>
+                        <input type="text" class="form-control" id="filename" name="filename"
+                               placeholder="Nome do arquivo no dispositivo">
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('tr069.device_details', device_id=device_id) }}" class="btn btn-secondary me-md-2">Cancelar</a>
+                    <button type="submit" class="btn btn-warning">Iniciar Atualização</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

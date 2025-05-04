@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Diagnósticos{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Diagnósticos</h1>
+    <p class="lead">Dispositivo: {{ device_id }}</p>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">Executar Diagnóstico</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('tr069.run_diagnostics', device_id=device_id) }}">
+                <div class="mb-3">
+                    <label for="diagnostic_type" class="form-label">Tipo de Diagnóstico</label>
+                    <select class="form-select" id="diagnostic_type" name="diagnostic_type" required>
+                        <option value="" selected disabled>Selecione um tipo de diagnóstico</option>
+                        <option value="ping">Ping</option>
+                        <option value="traceroute">Traceroute</option>
+                    </select>
+                </div>
+                
+                <div id="ping-options" class="mb-3 d-none">
+                    <div class="card">
+                        <div class="card-header">
+                            Opções de Ping
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="ping_host" class="form-label">Host</label>
+                                <input type="text" class="form-control" id="ping_host" name="ping_host" value="8.8.8.8">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="ping_count" class="form-label">Número de Pacotes</label>
+                                    <input type="number" class="form-control" id="ping_count" name="ping_count" value="4" min="1" max="20">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="ping_timeout" class="form-label">Timeout (ms)</label>
+                                    <input type="number" class="form-control" id="ping_timeout" name="ping_timeout" value="1000" min="100" max="10000">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="ping_size" class="form-label">Tamanho do Pacote</label>
+                                    <input type="number" class="form-control" id="ping_size" name="ping_size" value="64" min="32" max="1500">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="traceroute-options" class="mb-3 d-none">
+                    <div class="card">
+                        <div class="card-header">
+                            Opções de Traceroute
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="traceroute_host" class="form-label">Host</label>
+                                <input type="text" class="form-control" id="traceroute_host" name="traceroute_host" value="8.8.8.8">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="traceroute_maxhops" class="form-label">Máximo de Saltos</label>
+                                    <input type="number" class="form-control" id="traceroute_maxhops" name="traceroute_maxhops" value="30" min="1" max="64">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="traceroute_timeout" class="form-label">Timeout (ms)</label>
+                                    <input type="number" class="form-control" id="traceroute_timeout" name="traceroute_timeout" value="5000" min="1000" max="30000">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('tr069.device_details', device_id=device_id) }}" class="btn btn-secondary me-md-2">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Executar Diagnóstico</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const diagnosticTypeSelect = document.getElementById('diagnostic_type');
+        const pingOptions = document.getElementById('ping-options');
+        const tracerouteOptions = document.getElementById('traceroute-options');
+        
+        diagnosticTypeSelect.addEventListener('change', function() {
+            if (this.value === 'ping') {
+                pingOptions.classList.remove('d-none');
+                tracerouteOptions.classList.add('d-none');
+            } else if (this.value === 'traceroute') {
+                pingOptions.classList.add('d-none');
+                tracerouteOptions.classList.remove('d-none');
+            } else {
+                pingOptions.classList.add('d-none');
+                tracerouteOptions.classList.add('d-none');
+            }
+        });
+    });
+</script>
+{% endblock %}
+
+{% endblock %}

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}TR-069 Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">TR-069 Dashboard</h1>
+    
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Status do Servidor ACS</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5>Servidor ACS</h5>
+                            <p>Gerenciamento de dispositivos via TR-069</p>
+                        </div>
+                        <div>
+                            <form action="{{ url_for('tr069.start_acs') }}" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-play-fill"></i> Iniciar
+                                </button>
+                            </form>
+                            <form action="{{ url_for('tr069.stop_acs') }}" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="bi bi-stop-fill"></i> Parar
+                                </button>
+                            </form>
+                            <a href="{{ url_for('tr069.acs_settings') }}" class="btn btn-secondary">
+                                <i class="bi bi-gear"></i> Configurações
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card dashboard-card bg-light">
+                <div class="card-body text-center">
+                    <h1 class="display-4">{{ devices|length }}</h1>
+                    <p class="card-text">Dispositivos Gerenciados</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card dashboard-card bg-success text-white">
+                <div class="card-body text-center">
+                    <h1 class="display-4">{{ devices|selectattr('status', 'equalto', 'online')|list|length }}</h1>
+                    <p class="card-text">Dispositivos Online</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card dashboard-card bg-danger text-white">
+                <div class="card-body text-center">
+                    <h1 class="display-4">{{ devices|selectattr('status', 'equalto', 'offline')|list|length }}</h1>
+                    <p class="card-text">Dispositivos Offline</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card dashboard-card bg-warning">
+                <div class="card-body text-center">
+                    <h1 class="display-4">0</h1>
+                    <p class="card-text">Atualizações Pendentes</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Dispositivos Gerenciados</h5>
+                </div>
+                <div class="card-body">
+                    {% if devices %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Fabricante</th>
+                                    <th>Modelo</th>
+                                    <th>Versão</th>
+                                    <th>Última Conexão</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for device_id, device in devices.items() %}
+                                <tr>
+                                    <td>{{ device_id }}</td>
+                                    <td>{{ device.manufacturer }}</td>
+                                    <td>{{ device.model }}</td>
+                                    <td>{{ device.software_version }}</td>
+                                    <td>{{ device.last_seen }}</td>
+                                    <td>
+                                        <span class="badge bg-success">Online</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('tr069.device_details', device_id=device_id) }}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-eye"></i> Detalhes
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        Nenhum dispositivo gerenciado encontrado. Inicie o servidor ACS para começar a gerenciar dispositivos.
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('tr069.device_list') }}" class="btn btn-primary">
+                        <i class="bi bi-list"></i> Ver Todos os Dispositivos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Configurações VoIP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Configurações VoIP</h1>
+    <p class="lead">Dispositivo: {{ device_id }}</p>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">Configurações do Serviço VoIP</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('tr069.voip_settings', device_id=device_id) }}">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="voip_enabled" name="voip_enabled" 
+                                {% if voip_settings and voip_settings.get('InternetGatewayDevice.Services.VoiceService.1.VoiceProfile.1.Enable', {}).get('value') == '1' %}checked{% endif %}>
+                            <label class="form-check-label" for="voip_enabled">Habilitar Serviço VoIP</label>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="proxy_server" class="form-label">Servidor Proxy SIP</label>
+                            <input type="text" class="form-control" id="proxy_server" name="proxy_server" 
+                                value="{{ voip_settings.get('InternetGatewayDevice.Services.VoiceService.1.VoiceProfile.1.SIP.ProxyServer', {}).get('value', '') }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="registrar_server" class="form-label">Servidor de Registro SIP</label>
+                            <input type="text" class="form-control" id="registrar_server" name="registrar_server" 
+                                value="{{ voip_settings.get('InternetGatewayDevice.Services.VoiceService.1.VoiceProfile.1.SIP.RegistrarServer', {}).get('value', '') }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="domain" class="form-label">Domínio SIP</label>
+                            <input type="text" class="form-control" id="domain" name="domain" 
+                                value="{{ voip_settings.get('InternetGatewayDevice.Services.VoiceService.1.VoiceProfile.1.SIP.UserAgentDomain', {}).get('value', '') }}">
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="line_enabled" name="line_enabled" 
+                                {% if voip_settings and voip_settings.get('InternetGatewayDevice.Services.VoiceService.1.VoiceProfile.1.Line.1.Enable', {}).get('value') == '1' %}checked{% endif %}>
+                            <label class="form-check-label" for="line_enabled">Habilitar Linha 1</label>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Nome de Usuário SIP</label>
+                            <input type="text" class="form-control" id="username" name="username" 
+                                value="{{ voip_settings.get('InternetGatewayDevice.Services.VoiceService.1.VoiceProfile.1.Line.1.SIP.AuthUserName', {}).get('value', '') }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Senha SIP</label>
+                            <input type="password" class="form-control" id="password" name="password" 
+                                value="">
+                            <div class="form-text">Deixe em branco para manter a senha atual.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="uri" class="form-label">URI SIP</label>
+                            <input type="text" class="form-control" id="uri" name="uri" 
+                                value="{{ voip_settings.get('InternetGatewayDevice.Services.VoiceService.1.VoiceProfile.1.Line.1.SIP.URI', {}).get('value', '') }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="caller_id" class="form-label">Nome de Identificação de Chamada</label>
+                            <input type="text" class="form-control" id="caller_id" name="caller_id" 
+                                value="{{ voip_settings.get('InternetGatewayDevice.Services.VoiceService.1.VoiceProfile.1.Line.1.CallingFeatures.CallerIDName', {}).get('value', '') }}">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('tr069.device_details', device_id=device_id) }}" class="btn btn-secondary me-md-2">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Salvar Configurações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

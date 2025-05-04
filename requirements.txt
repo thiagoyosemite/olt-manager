@@ -1,0 +1,13 @@
+Flask==2.3.3
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.2
+Flask-WTF==1.2.1
+pysnmp==4.4.12
+SQLAlchemy==2.0.23
+Werkzeug==2.3.7
+WTForms==3.0.1
+python-dotenv==1.0.0
+Flask-Migrate==4.0.5
+plotly==5.18.0
+pandas==2.1.1
+gunicorn==21.2.0
