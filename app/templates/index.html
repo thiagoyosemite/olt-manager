@@ -1,0 +1,479 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .category-card {
+        cursor: pointer; /* Indicate clickable */
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
+    }
+    .category-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);
+    }
+    .category-card.active {
+        border-width: 2px;
+        box-shadow: 0 0 0 .25rem rgba(13,110,253,.25); /* Bootstrap primary focus color */
+    }
+    .category-card .card-body {
+        text-align: center;
+    }
+    .category-card .count {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+    .category-card .category-name {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+    /* Specific colors for categories */
+    .category-online-sinal-ok { border-left: 5px solid #198754; } /* Green */
+    .category-sinal-baixo-critico { border-left: 5px solid #ffc107; } /* Yellow */
+    .category-sinal-muito-baixo-falha { border-left: 5px solid #dc3545; } /* Red */
+    .category-offline { border-left: 5px solid #6c757d; } /* Grey */
+    .category-esperando-provisionamento { border-left: 5px solid #0dcaf0; } /* Cyan */
+    .category-desconhecido { border-left: 5px solid #adb5bd; } /* Light Grey */
+    .category-online-sinal-desconhecido { border-left: 5px solid #ffc107; } /* Yellow */
+
+    /* Style for filtered table */
+    .ont-table-container {
+        display: block; /* Show by default */
+    }
+    #ont-table tbody.loading {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+    .action-buttons button {
+        margin-right: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <h1>Dashboard</h1>
+    <p>Bem-vindo, {{ current_user.username }}!</p>
+
+    <!-- OLT Info Card -->
+    <div class="card mb-4">
+        <div class="card-header">
+            Informações da OLT ({{ olt_info.ip if olt_info else 'N/A' }})
+        </div>
+        <div class="card-body">
+            {% if olt_info and not olt_info.get('error') %}
+                <dl class="row">
+                    <dt class="col-sm-3">Modelo:</dt>
+                    <dd class="col-sm-9">{{ olt_info.get('model', 'N/A') }}</dd>
+                    <dt class="col-sm-3">Versão SW:</dt>
+                    <dd class="col-sm-9">{{ olt_info.get('sw_version', 'N/A') }}</dd>
+                    <dt class="col-sm-3">Uptime:</dt>
+                    <dd class="col-sm-9">{{ olt_info.get('uptime', 'N/A') }}</dd>
+                    <dt class="col-sm-3">Temperatura:</dt>
+                    <dd class="col-sm-9">{{ olt_info.get('temperature', 'N/A') }}</dd>
+                    <dt class="col-sm-3">Descrição Sys:</dt>
+                    <dd class="col-sm-9"><small>{{ olt_info.get('sysDescr', 'N/A') }}</small></dd>
+                </dl>
+            {% elif olt_info and olt_info.get('error') %}
+                <div class="alert alert-danger" role="alert">
+                    Erro ao buscar informações da OLT: {{ olt_info.get('error') }}
+                </div>
+            {% else %}
+                <div class="alert alert-warning" role="alert">
+                    Não foi possível obter informações da OLT.
+                </div>
+            {% endif %}
+        </div>
+        <div class="card-footer text-muted">
+            <a href="{{ url_for('main.refresh_data') }}" class="btn btn-sm btn-secondary">Atualizar Dados</a>
+        </div>
+    </div>
+
+    <!-- ONU Category Blocks -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5>Status ONUs (SNMP)</h5>
+        </div>
+        {% if not error_ont_fetch and ont_categories %}
+            <!-- Total Card -->
+            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                <div class="card category-card h-100 active" data-category-filter="all"> <!-- Start with 'all' active -->
+                    <div class="card-body">
+                        <div class="count">{{ total_onus }}</div>
+                        <div class="category-name">Total</div>
+                    </div>
+                </div>
+            </div>
+            <!-- Category Cards -->
+            {% for category, count in ont_categories %}
+                {% set category_class = category | lower | replace(' ', '-') | replace('/', '-') | replace('(', '') | replace(')', '') | replace('?', '') %}
+                <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                    <div class="card category-card h-100 category-{{ category_class }}" data-category-filter="{{ category }}">
+                        <div class="card-body">
+                            <div class="count">{{ count }}</div>
+                            <div class="category-name">{{ category }}</div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% elif error_ont_fetch %}
+            <div class="col-12">
+                <div class="alert alert-danger" role="alert">
+                    Erro ao buscar dados das ONUs via SNMP.
+                </div>
+            </div>
+        {% else %}
+             <div class="col-12">
+                <div class="alert alert-info" role="alert">
+                    Nenhuma ONU encontrada ou dados ainda não carregados.
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- ONU List Table -->
+    <div class="card mb-4 ont-table-container">
+        <div class="card-header">
+            Lista de ONUs Descobertas (SNMP) - <span id="table-filter-status">Todas</span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-sm" id="ont-table">
+                    <thead>
+                        <tr>
+                            <th>Porta</th>
+                            <th>ONU ID</th>
+                            <th>Serial Number</th>
+                            <th>LOID</th>
+                            <th>Categoria</th>
+                            <th>Status Link</th>
+                            <th>Status Reg.</th>
+                            <th>Rx Power</th>
+                            <th>Tx Power</th>
+                            <th>Ações</th> {# New column for actions #}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {# Initial data loaded by Flask, rows generated by JS #}
+                        {% if not ont_list and not error_ont_fetch %}
+                            <tr><td colspan="10"><div class="alert alert-info mb-0">Nenhuma ONU encontrada ou a coleta ainda não foi realizada.</div></td></tr>
+                        {% elif error_ont_fetch %}
+                             <tr><td colspan="10"><div class="alert alert-danger mb-0">Erro ao buscar a lista inicial de ONUs.</div></td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs Card (mantido no final) -->
+     <div class="card mb-4">
+        <div class="card-header">Logs Recentes</div>
+        <div class="card-body" style="max-height: 200px; overflow-y: auto;">
+            <ul class="list-unstyled">
+                {% for log in recent_logs %}
+                    <li><small>[{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}] [{{ log.level }}] {{ log.message }}</small></li>
+                {% else %}
+                    <li>Nenhum log recente.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Authorize ONU Modal -->
+    <div class="modal fade" id="authorizeOntModal" tabindex="-1" aria-labelledby="authorizeOntModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="authorizeOntModalLabel">Autorizar ONU</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="authorize-alert-placeholder"></div> {# Placeholder for alerts #}
+                    <p><strong>Serial Number:</strong> <span id="modal-ont-sn"></span></p>
+                    <p><strong>Porta (ifIndex):</strong> <span id="modal-ont-ifindex"></span></p>
+                    <input type="hidden" id="modal-ont-ifindex-input">
+                    <input type="hidden" id="modal-ont-sn-input">
+
+                    <div class="mb-3">
+                        <label for="modal-ont-description" class="form-label">Descrição</label>
+                        <input type="text" class="form-control" id="modal-ont-description" value="Autorizado via OLT Manager">
+                    </div>
+                    <div class="mb-3">
+                        <label for="modal-ont-lineprofile" class="form-label">Line Profile ID</label>
+                        <input type="number" class="form-control" id="modal-ont-lineprofile" value="1"> {# Default value #}
+                    </div>
+                    <div class="mb-3">
+                        <label for="modal-ont-srvprofile" class="form-label">Service Profile ID</label>
+                        <input type="number" class="form-control" id="modal-ont-srvprofile" value="1"> {# Default value #}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmAuthorizeBtn">Autorizar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container for feedback -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="actionToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto">OLT Manager</strong>
+                <small>Agora</small>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                Mensagem de feedback aqui.
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const categoryCards = document.querySelectorAll('.category-card');
+        const ontTableBody = document.querySelector('#ont-table tbody');
+        const tableFilterStatus = document.getElementById('table-filter-status');
+        const initialOntList = {{ ont_list | tojson }};
+        const apiUrl = "{{ url_for('main.api_onus') }}";
+        const authorizeApiUrl = "{{ url_for('main.api_authorize_ont') }}";
+        const authorizeModalElement = document.getElementById('authorizeOntModal');
+        const authorizeModal = new bootstrap.Modal(authorizeModalElement);
+        const confirmAuthorizeBtn = document.getElementById('confirmAuthorizeBtn');
+        const actionToastElement = document.getElementById('actionToast');
+        const actionToast = new bootstrap.Toast(actionToastElement);
+        const alertPlaceholder = document.getElementById('authorize-alert-placeholder');
+
+        let currentFilter = 'all'; // Track current filter
+
+        // Function to show toast feedback
+        function showToast(message, isError = false) {
+            const toastBody = actionToastElement.querySelector('.toast-body');
+            toastBody.textContent = message;
+            actionToastElement.classList.remove('bg-success', 'bg-danger', 'text-white');
+            if (isError) {
+                actionToastElement.classList.add('bg-danger', 'text-white');
+            } else {
+                actionToastElement.classList.add('bg-success', 'text-white');
+            }
+            actionToast.show();
+        }
+
+        // Function to show alerts inside the modal
+        function showModalAlert(message, type = 'danger') {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = [
+                `<div class="alert alert-${type} alert-dismissible" role="alert">`,
+                `   <div>${message}</div>`,
+                '   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
+                '</div>'
+            ].join('');
+            alertPlaceholder.innerHTML = ''; // Clear previous alerts
+            alertPlaceholder.append(wrapper);
+        }
+
+        // Function to generate a table row for an ONT
+        function createOntRow(ont) {
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-ifindex', ont.ifIndex);
+            tr.setAttribute('data-sn', ont.serialNumber);
+            const category = ont.category || 'Desconhecido';
+            let categoryBadge = `<span class="badge bg-light text-dark">${category}</span>`;
+            if (category === 'Online (Sinal OK)') categoryBadge = `<span class="badge bg-success">${category}</span>`;
+            else if (category === 'Sinal Baixo/Crítico') categoryBadge = `<span class="badge bg-warning text-dark">${category}</span>`;
+            else if (category === 'Sinal Muito Baixo (Falha?)') categoryBadge = `<span class="badge bg-danger">${category}</span>`;
+            else if (category === 'Offline') categoryBadge = `<span class="badge bg-secondary">${category}</span>`;
+            else if (category === 'Esperando Provisionamento') categoryBadge = `<span class="badge bg-info text-dark">${category}</span>`;
+
+            let linkStatusBadge = `<span class="badge bg-secondary">${ont.linkStatus || 'N/A'}</span>`;
+            if (ont.linkStatus === 'online') linkStatusBadge = `<span class="badge bg-success">Online</span>`;
+            else if (ont.linkStatus === 'offline') linkStatusBadge = `<span class="badge bg-danger">Offline</span>`;
+
+            let regStatusBadge = `<span class="badge bg-secondary">${ont.regStatus || 'N/A'}</span>`;
+            if (ont.regStatus === 'registered') regStatusBadge = `<span class="badge bg-success">Registrada</span>`;
+            else if (ont.regStatus === 'unregistered') regStatusBadge = `<span class="badge bg-warning text-dark">Não Registrada</span>`;
+
+            // Add action button only for 'Esperando Provisionamento'
+            let actionButtons = '';
+            if (category === 'Esperando Provisionamento') {
+                actionButtons = `
+                    <button class="btn btn-sm btn-primary authorize-btn"
+                            data-bs-toggle="modal"
+                            data-bs-target="#authorizeOntModal"
+                            data-ifindex="${ont.ifIndex}"
+                            data-sn="${ont.serialNumber}">
+                        Autorizar
+                    </button>
+                `;
+            }
+
+            tr.innerHTML = `
+                <td>${ont.portName || 'N/A'}</td>
+                <td>${ont.onuId || 'N/A'}</td>
+                <td><small>${ont.serialNumber || 'N/A'}</small></td>
+                <td><small>${ont.loid || 'N/A'}</small></td>
+                <td>${categoryBadge}</td>
+                <td>${linkStatusBadge}</td>
+                <td>${regStatusBadge}</td>
+                <td>${ont.rxPower || 'N/A'}</td>
+                <td>${ont.txPower || 'N/A'}</td>
+                <td class="action-buttons">${actionButtons}</td>
+            `;
+            return tr;
+        }
+
+        // Function to fetch and update the table
+        function fetchAndUpdateTable(filter) {
+            // Add loading indicator
+            ontTableBody.classList.add('loading');
+            ontTableBody.innerHTML = '<tr><td colspan="10" class="text-center"><div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Carregando...</span></div> Carregando ONUs...</td></tr>';
+
+            fetch(`${apiUrl}?category=${encodeURIComponent(filter)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        console.error('API Error:', data.error);
+                        ontTableBody.innerHTML = `<tr><td colspan="10"><div class="alert alert-danger mb-0">Erro ao buscar ONUs: ${data.error}</div></td></tr>`;
+                        ontTableBody.classList.remove('loading');
+                    } else {
+                        updateTable(data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch Error:', error);
+                    ontTableBody.innerHTML = `<tr><td colspan="10"><div class="alert alert-danger mb-0">Erro ao conectar com a API para buscar ONUs. (${error.message})</div></td></tr>`;
+                    ontTableBody.classList.remove('loading');
+                });
+        }
+
+        // Function to update the table with new data
+        function updateTable(onts) {
+            ontTableBody.innerHTML = ''; // Clear existing rows
+            if (onts && onts.length > 0) {
+                onts.forEach(ont => {
+                    ontTableBody.appendChild(createOntRow(ont));
+                });
+            } else {
+                ontTableBody.innerHTML = '<tr><td colspan="10"><div class="alert alert-info mb-0">Nenhuma ONU encontrada para esta categoria.</div></td></tr>';
+            }
+            ontTableBody.classList.remove('loading');
+        }
+
+        // Initial table population
+        if (initialOntList && initialOntList.length > 0) {
+             updateTable(initialOntList);
+        } else if ({{ error_ont_fetch | tojson }}) {
+             ontTableBody.innerHTML = '<tr><td colspan="10"><div class="alert alert-danger mb-0">Erro ao buscar a lista inicial de ONUs.</div></td></tr>';
+        } else {
+             ontTableBody.innerHTML = '<tr><td colspan="10"><div class="alert alert-info mb-0">Nenhuma ONU encontrada inicialmente.</div></td></tr>';
+        }
+
+        // Add click listeners to category cards
+        categoryCards.forEach(card => {
+            card.addEventListener('click', function () {
+                currentFilter = this.getAttribute('data-category-filter');
+
+                // Update active card style
+                categoryCards.forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+
+                // Update table filter status text
+                tableFilterStatus.textContent = currentFilter === 'all' ? 'Todas' : currentFilter;
+
+                // Fetch and update table
+                fetchAndUpdateTable(currentFilter);
+            });
+        });
+
+        // Event listener for modal show
+        authorizeModalElement.addEventListener('show.bs.modal', function (event) {
+            // Button that triggered the modal
+            const button = event.relatedTarget;
+            // Extract info from data-* attributes
+            const ifIndex = button.getAttribute('data-ifindex');
+            const sn = button.getAttribute('data-sn');
+
+            // Update the modal's content.
+            const modalSn = authorizeModalElement.querySelector('#modal-ont-sn');
+            const modalIfIndex = authorizeModalElement.querySelector('#modal-ont-ifindex');
+            const modalIfIndexInput = authorizeModalElement.querySelector('#modal-ont-ifindex-input');
+            const modalSnInput = authorizeModalElement.querySelector('#modal-ont-sn-input');
+
+            modalSn.textContent = sn;
+            modalIfIndex.textContent = ifIndex;
+            modalIfIndexInput.value = ifIndex;
+            modalSnInput.value = sn;
+
+            // Clear previous alerts
+            alertPlaceholder.innerHTML = '';
+            // Reset button state
+            confirmAuthorizeBtn.disabled = false;
+            confirmAuthorizeBtn.innerHTML = 'Autorizar';
+        });
+
+        // Event listener for modal confirm button
+        confirmAuthorizeBtn.addEventListener('click', function() {
+            const ifIndex = document.getElementById('modal-ont-ifindex-input').value;
+            const serialNumber = document.getElementById('modal-ont-sn-input').value;
+            const description = document.getElementById('modal-ont-description').value;
+            const lineProfileId = document.getElementById('modal-ont-lineprofile').value;
+            const srvProfileId = document.getElementById('modal-ont-srvprofile').value;
+
+            // Disable button and show loading state
+            confirmAuthorizeBtn.disabled = true;
+            confirmAuthorizeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Autorizando...';
+            alertPlaceholder.innerHTML = ''; // Clear previous alerts
+
+            fetch(authorizeApiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Include CSRF token if needed (using Flask-WTF)
+                    // 'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    if_index: ifIndex,
+                    serial_number: serialNumber,
+                    description: description,
+                    line_profile_id: parseInt(lineProfileId) || 1, // Ensure integer
+                    srv_profile_id: parseInt(srvProfileId) || 1   // Ensure integer
+                })
+            })
+            .then(response => response.json().then(data => ({ status: response.status, body: data })))
+            .then(({ status, body }) => {
+                if (status === 200) {
+                    showToast(body.message || 'Operação realizada com sucesso!');
+                    authorizeModal.hide();
+                    // Refresh the table with the current filter after a short delay
+                    setTimeout(() => fetchAndUpdateTable(currentFilter), 1000);
+                } else {
+                    console.error('Authorization Error:', body.error, body.output);
+                    showModalAlert(`Erro ${status}: ${body.error || 'Falha ao autorizar ONU.'}<br><small>Detalhes: ${body.output || 'N/A'}</small>`, 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Fetch Error:', error);
+                showModalAlert(`Erro de comunicação ao tentar autorizar ONU: ${error.message}`, 'danger');
+            })
+            .finally(() => {
+                // Re-enable button regardless of outcome (unless modal is hidden)
+                if (authorizeModalElement.classList.contains('show')) {
+                    confirmAuthorizeBtn.disabled = false;
+                    confirmAuthorizeBtn.innerHTML = 'Autorizar';
+                }
+            });
+        });
+
+    });
+</script>
+{% endblock %}
+
